@@ -5,27 +5,39 @@ import Visualization from './Visualization';
 import styled from 'styled-components';
 import { BlockMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
+import * as PropTypes from "prop-types";
 
 const Container = styled.div`
   background: #ffffff;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
-  padding: 24px;
+  padding: 50px;
   max-width: 1024px;
   margin: 40px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  
+  h4.graph-title {
+    font-size: 20px;
+    margin-top: 40px;
+    :first-child {
+      margin-top: 0;
+    }
+  }
 `;
 
 const Title = styled.h1`
-  font-size: 1.5rem;
+  font-size: 40px;
   font-weight: bold;
   text-align: center;
   margin-bottom: 24px;
 `;
 
 const Subtitle = styled.h2`
-  font-size: 1.25rem;
+  font-size: 30px;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin-bottom: 25px;
 `;
 
 const Text = styled.p`
@@ -99,15 +111,39 @@ const ButtonWrapper = styled.div`
 `;
 
 const MetricsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   margin-bottom: 24px;
+  
+  .metrics-values {
+    font-size: 16px;
+  }
+  
+  & > *:first-child {
+    flex: 0 0 30%;
+    max-width: 30%;
+  }
+
+  & > *:last-child {
+    flex: 0 0 calc(70% - 16px);
+    max-width: calc(70% - 16px);
+  }
+
+  @media (max-width: 768px) {
+    & > *:first-child,
+    & > *:last-child {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+  }
 `;
 
 const Card = styled.div`
+  display: flex;
+  flex-direction: column;
   background: #f9fafb;
-  padding: 16px;
+  padding: 25px;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 `;
@@ -129,6 +165,22 @@ const Td = styled.td`
   padding: 8px;
   border-bottom: 1px solid #e5e7eb;
 `;
+
+const MathLetter = styled.span`
+  display: inline;
+  font-family: "Cambria Math";
+  font-style: italic;
+`;
+
+const ReportGenerationBlock = styled.div`
+    display: flex;
+    width: 100%;
+    div {
+        width: 70%;
+    }
+  
+    justify-content: space-between;
+`
 
 const ResultsView = ({ sessionData, analysisResults, setAnalysisResults }) => {
   const [loading, setLoading] = useState(false);
@@ -211,7 +263,7 @@ const ResultsView = ({ sessionData, analysisResults, setAnalysisResults }) => {
               </Text>
               <Form onSubmit={handleAnalysis}>
                 <div>
-                  <Label>Залежна змінна (Y):</Label>
+                  <Label>Залежна змінна <MathLetter>(Y)</MathLetter>:</Label>
                   <Select
                       value={selectedDependent}
                       onChange={(e) => setSelectedDependent(e.target.value)}
@@ -225,7 +277,7 @@ const ResultsView = ({ sessionData, analysisResults, setAnalysisResults }) => {
                   </Select>
                 </div>
                 <div>
-                  <Label>Незалежні змінні (X):</Label>
+                  <Label>Незалежні змінні <MathLetter>(X)</MathLetter>:</Label>
                   <CheckboxContainer>
                     {sessionData.columns
                         .filter((column) => column !== selectedDependent)
@@ -258,13 +310,17 @@ const ResultsView = ({ sessionData, analysisResults, setAnalysisResults }) => {
               <MetricsGrid>
                 {/* Основні метрики */}
                 <Card>
-                  <h3 style={{ marginBottom: '8px', fontWeight: '500' }}>Основні метрики</h3>
+                  <h3 style={{ marginBottom: '20px', fontWeight: '500' }}>Основні метрики</h3>
                   <div style={{ fontSize: '0.875rem' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '8px' }}>
-                      <div style={{ fontWeight: '600' }}>R²:</div>
-                      <div>{(analysisResults.r_squared * 100).toFixed(2)}%</div>
-                      <div style={{ fontWeight: '600' }}>MSE:</div>
-                      <div>{analysisResults.mse.toFixed(4)}</div>
+                    <div className="metrics-values" style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                        <div style={{ fontWeight: '600', marginRight: '5px' }}>R²:</div>
+                        <div>{(analysisResults.r_squared * 100).toFixed(2)}%</div>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <div style={{ fontWeight: '600', marginRight: '5px' }}>MSE:</div>
+                        <div>{analysisResults.mse.toFixed(4)}</div>
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -272,11 +328,18 @@ const ResultsView = ({ sessionData, analysisResults, setAnalysisResults }) => {
                 {/* Рівняння регресії */}
                 <Card>
                   <h3 style={{ marginBottom: '8px', fontWeight: '500' }}>Рівняння регресії</h3>
-                  <div style={{ fontSize: '0.875rem', wordBreak: 'break-word' }}>
+                  <div style={{ fontSize: '0.875rem', wordBreak: 'break-word', overflowX: 'auto' }}>
                     <BlockMath>
-                      {`${selectedDependent} = ${analysisResults.intercept.toFixed(4)} ${Object.entries(analysisResults.coefficients)
-                          .map(([variable, coefficient]) => `${coefficient >= 0 ? '+' : ''} ${coefficient.toFixed(4)} \\cdot ${variable}`)
-                          .join(' ')}`}
+                      {`\\begin{aligned}
+      ${selectedDependent} &= ${analysisResults.intercept.toFixed(4)} \\\\
+      &${Object.entries(analysisResults.coefficients)
+                          .map(([variable, coefficient], index) => {
+                            // Add a line break after every 2 terms for better readability
+                            const lineBreak = (index > 0 && index % 2 === 0) ? '\\\\&' : '';
+                            return `${lineBreak}${coefficient >= 0 ? '+' : ''} ${coefficient.toFixed(4)} \\cdot ${variable}`;
+                          })
+                          .join(' ')}
+      \\end{aligned}`}
                     </BlockMath>
                   </div>
                 </Card>
@@ -327,11 +390,11 @@ const ResultsView = ({ sessionData, analysisResults, setAnalysisResults }) => {
 
               {/* Графіки */}
               <div style={{ marginBottom: '32px' }}>
-                <h3 style={{ fontWeight: '500', marginBottom: '16px' }}>Графіки</h3>
+                <h3 style={{fontSize: '30px', fontWeight: '600', marginBottom: '16px' }}>Графіки</h3>
                 {/* Графік функції (якщо кількість незалежних змінних ≤ 3) */}
                 {selectedIndependent.length <= 2 && (
                     <div style={{ marginBottom: '32px' }}>
-                      <h4 style={{ fontWeight: '500', marginBottom: '8px' }}>Графік функції</h4>
+                      <h4 className="graph-title" style={{ fontWeight: '500', marginBottom: '8px' }}>Графік функції</h4>
                       <Visualization
                           type="function"
                           analysisResults={analysisResults}
@@ -343,7 +406,7 @@ const ResultsView = ({ sessionData, analysisResults, setAnalysisResults }) => {
 
                 {/* Фактичні vs Прогнозовані значення */}
                 <div style={{ marginBottom: '32px' }}>
-                  <h4 style={{ fontWeight: '500', marginBottom: '8px' }}>Фактичні vs Прогнозовані значення</h4>
+                  <h4 className="graph-title" style={{ fontWeight: '500', marginBottom: '8px' }}>Фактичні vs Прогнозовані значення</h4>
                   <Visualization
                       type="actual_vs_predicted"
                       analysisResults={analysisResults}
@@ -353,7 +416,7 @@ const ResultsView = ({ sessionData, analysisResults, setAnalysisResults }) => {
                 {/* Графік залишків */}
                 {analysisResults.residuals && (
                     <div style={{ marginBottom: '32px' }}>
-                      <h4 style={{ fontWeight: '500', marginBottom: '8px' }}>Залишки</h4>
+                      <h4 className="graph-title" style={{ fontWeight: '500', marginBottom: '8px' }}>Залишки</h4>
                       <Visualization
                           type="residuals"
                           analysisResults={analysisResults}
@@ -378,19 +441,21 @@ const ResultsView = ({ sessionData, analysisResults, setAnalysisResults }) => {
                       flexWrap: 'wrap',
                     }}
                 >
-                  <div style={{ flex: '1', minWidth: '200px' }}>
-                    <Label>Формат звіту:</Label>
-                    <Select
-                        value={reportFormat}
-                        onChange={(e) => setReportFormat(e.target.value)}
-                    >
-                      <option value="pdf">PDF</option>
-                      <option value="xlsx">Excel (.xlsx)</option>
-                    </Select>
-                  </div>
+                  <ReportGenerationBlock>
+                    <div>
+                      <Label>Формат звіту:</Label>
+                      <Select
+                          value={reportFormat}
+                          onChange={(e) => setReportFormat(e.target.value)}
+                      >
+                        <option value="pdf">PDF</option>
+                        <option value="xlsx">Excel (.xlsx)</option>
+                      </Select>
+                    </div>
                   <Button onClick={handleReportGeneration} disabled={reportGenerating}>
                     {reportGenerating ? 'Генерація...' : 'Згенерувати звіт'}
                   </Button>
+                  </ReportGenerationBlock>
                 </div>
               </div>
               <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'center' }}>

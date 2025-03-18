@@ -7,7 +7,7 @@ const Container = styled.div`
   background: #ffffff;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
-  padding: 24px;
+  padding: 50px;
   max-width: 640px;
   margin: 40px auto;
 `;
@@ -15,18 +15,19 @@ const Container = styled.div`
 const Title = styled.h1`
   font-size: 1.5rem;
   font-weight: bold;
-  margin-bottom: 24px;
+  margin-bottom: 30px;
   text-align: center;
 `;
 
 const Subtitle = styled.h2`
   font-size: 1.25rem;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin-top: 10px;
+  margin-bottom: 20px;
 `;
 
 const Text = styled.p`
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   color: #718096;
 `;
 
@@ -39,7 +40,7 @@ const Form = styled.form`
 const FileInputContainer = styled.div`
   border: 2px dashed #d1d5db;
   border-radius: 8px;
-  padding: 24px;
+  padding: 30px;
   text-align: center;
 `;
 

@@ -6,8 +6,14 @@
 /*------------------------------------
   Base Styles
 ------------------------------------*/
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 body {
-  @apply font-inter text-base leading-relaxed text-gray-800;
+  font-family: "Cambria";
   background-color: #f9fafb; /* Light background for readability */
 }
 

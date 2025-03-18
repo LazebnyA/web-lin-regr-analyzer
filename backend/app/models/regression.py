@@ -47,12 +47,16 @@ class LinearRegression:
         # Calculate MSE
         mse = mean_squared_error(y, y_pred)
 
-        # Create a dataframe with actual vs predicted values
+        # Create a dataframe with actual vs predicted values and X values
         pred_vs_actual = pd.DataFrame({
             'actual': y,
             'predicted': y_pred,
             'residual': y - y_pred
         })
+
+        # Add all X columns to the pred_vs_actual dataframe
+        for column in X.columns:
+            pred_vs_actual[column] = X[column]
 
         # Correlation matrix including dependent variable
         all_data = pd.concat([X, y], axis=1)
