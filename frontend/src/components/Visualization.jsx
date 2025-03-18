@@ -1,158 +1,162 @@
-import React, { useEffect, useRef } from 'react';
-import Chart from 'chart.js/auto';
+import React from 'react';
+import Plot from 'react-plotly.js';
 
-const Visualization = ({ analysisResults }) => {
-  const actualVsPredictedRef = useRef(null);
-  const residualsRef = useRef(null);
-  const actualVsPredictedChart = useRef(null);
-  const residualsChart = useRef(null);
-
-  useEffect(() => {
-    if (!analysisResults) return;
-
-    // Clean up existing charts
-    if (actualVsPredictedChart.current) {
-      actualVsPredictedChart.current.destroy();
-    }
-    if (residualsChart.current) {
-      residualsChart.current.destroy();
+const Visualization = ({ type, analysisResults, dependentVariable, independentVariables }) => {
+    if (!analysisResults) {
+        return <div>Дані для візуалізації відсутні.</div>;
     }
 
-    // Create Actual vs Predicted Chart
-    const actualVsPredictedCtx = actualVsPredictedRef.current.getContext('2d');
-    const actualValues = analysisResults.predicted_vs_actual.map(item => item.actual);
-    const predictedValues = analysisResults.predicted_vs_actual.map(item => item.predicted);
+    const { predicted_vs_actual, residuals } = analysisResults;
 
-    const minValue = Math.min(...actualValues);
-    const maxValue = Math.max(...actualValues);
+    // Отримуємо фактичні та прогнозовані значення
+    const actual = predicted_vs_actual.map((item) => item.actual);
+    const predicted = predicted_vs_actual.map((item) => item.predicted);
 
-    actualVsPredictedChart.current = new Chart(actualVsPredictedCtx, {
-      type: 'scatter',
-      data: {
-        datasets: [
-          {
-            label: 'Фактичні vs Прогнозовані',
-            data: analysisResults.predicted_vs_actual.map(item => ({
-              x: item.actual,
-              y: item.predicted
-            })),
-            backgroundColor: 'rgba(54, 162, 235, 0.5)',
-            borderColor: 'rgba(54, 162, 235, 1)',
-            borderWidth: 1
-          },
-          {
-            label: 'Ідеальна лінія',
-            data: [
-              { x: minValue, y: minValue },
-              { x: maxValue, y: maxValue }
-            ],
-            type: 'line',
-            borderColor: 'rgba(255, 99, 132, 1)',
-            borderWidth: 2,
-            borderDash: [5, 5],
-            pointRadius: 0,
-            fill: false
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          title: {
-            display: true,
-            text: 'Фактичні vs Прогнозовані значення'
-          }
-        },
-        scales: {
-          x: {
-            title: {
-              display: true,
-              text: 'Фактичні значення'
-            }
-          },
-          y: {
-            title: {
-              display: true,
-              text: 'Прогнозовані значення'
-            }
-          }
+    // Індекси для побудови графіка
+    const indices = Array.from({ length: predicted_vs_actual.length }, (_, i) => i);
+
+    // Графік функції (якщо кількість незалежних змінних ≤ 2)
+    if (type === 'function' && independentVariables && independentVariables.length <= 2) {
+        let plotData = [];
+        if (independentVariables.length === 1) {
+            // Для 2D графіка (одна незалежна змінна)
+            plotData = [
+                {
+                    x: indices, // Використовуємо індекси як значення x
+                    y: predicted,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Прогнозовані значення',
+                    line: { color: '#2563eb' },
+                },
+                {
+                    x: indices, // Використовуємо індекси як значення x
+                    y: actual,
+                    type: 'scatter',
+                    mode: 'markers',
+                    name: 'Фактичні значення',
+                    marker: { color: '#ef4444' },
+                },
+            ];
+        } else if (independentVariables.length === 2) {
+            // Для 3D графіка (дві незалежні змінні)
+            const x = indices; // Використовуємо індекси як значення x
+            const y = indices; // Використовуємо індекси як значення y
+            const z = predicted;
+
+            plotData = [
+                {
+                    x: x,
+                    y: y,
+                    z: z,
+                    type: 'surface',
+                    name: 'Прогнозовані значення',
+                    colorscale: 'Viridis',
+                },
+            ];
         }
-      }
-    });
 
-    // Create Residuals Chart
-    const residualsCtx = residualsRef.current.getContext('2d');
-    residualsChart.current = new Chart(residualsCtx, {
-      type: 'scatter',
-      data: {
-        datasets: [{
-          label: 'Залишки',
-          data: analysisResults.predicted_vs_actual.map((item, index) => ({
-            x: item.predicted,
-            y: item.residual
-          })),
-          backgroundColor: 'rgba(255, 159, 64, 0.5)',
-          borderColor: 'rgba(255, 159, 64, 1)',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          title: {
-            display: true,
-            text: 'Залишки vs Прогнозовані значення'
-          }
-        },
-        scales: {
-          x: {
-            title: {
-              display: true,
-              text: 'Прогнозовані значення'
-            }
-          },
-          y: {
-            title: {
-              display: true,
-              text: 'Залишки'
-            },
-            beginAtZero: false
-          }
+        return (
+            <div style={{ width: '100%', marginBottom: '32px' }}>
+                <h4 style={{ fontWeight: '500', marginBottom: '8px' }}>Графік функції</h4>
+                <Plot
+                    data={plotData}
+                    layout={{
+                        title: `Графік функції для ${dependentVariable}`,
+                        xaxis: { title: independentVariables[0] || 'Індекс' },
+                        yaxis: { title: independentVariables.length > 1 ? independentVariables[1] : 'Індекс' },
+                        zaxis: independentVariables.length > 1 ? { title: dependentVariable } : undefined,
+                        width: '100%',
+                        height: 500,
+                        margin: { t: 40, b: 40 },
+                    }}
+                />
+            </div>
+        );
+    }
+
+    // Графік фактичних vs прогнозованих значень
+    if (type === 'actual_vs_predicted') {
+        if (!actual || !predicted) {
+            return <div>Дані для графіка відсутні.</div>;
         }
-      }
-    });
+        return (
+            <div style={{ width: '100%', marginBottom: '32px' }}>
+                <h4 style={{ fontWeight: '500', marginBottom: '8px' }}>Фактичні vs Прогнозовані значення</h4>
+                <Plot
+                    data={[
+                        {
+                            x: actual,
+                            y: predicted,
+                            type: 'scatter',
+                            mode: 'markers',
+                            name: 'Фактичні vs Прогнозовані',
+                            marker: { color: '#2563eb' },
+                        },
+                        {
+                            x: [Math.min(...actual), Math.max(...actual)],
+                            y: [Math.min(...actual), Math.max(...actual)],
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Ідеальна лінія',
+                            line: { color: '#ef4444', dash: 'dash' },
+                        },
+                    ]}
+                    layout={{
+                        title: 'Фактичні vs Прогнозовані значення',
+                        xaxis: { title: 'Фактичні значення' },
+                        yaxis: { title: 'Прогнозовані значення' },
+                        width: '100%',
+                        height: 500,
+                        margin: { t: 40, b: 40 },
+                    }}
+                />
+            </div>
+        );
+    }
 
-    return () => {
-      if (actualVsPredictedChart.current) {
-        actualVsPredictedChart.current.destroy();
-      }
-      if (residualsChart.current) {
-        residualsChart.current.destroy();
-      }
-    };
-  }, [analysisResults]);
+    // Графік залишків
+    if (type === 'residuals') {
+        if (!residuals || !predicted) {
+            return <div>Дані для графіка залишків відсутні.</div>;
+        }
+        const residualValues = residuals.map((item) => item.residual);
+        return (
+            <div style={{ width: '100%', marginBottom: '32px' }}>
+                <h4 style={{ fontWeight: '500', marginBottom: '8px' }}>Залишки</h4>
+                <Plot
+                    data={[
+                        {
+                            x: predicted,
+                            y: residualValues,
+                            type: 'scatter',
+                            mode: 'markers',
+                            name: 'Залишки',
+                            marker: { color: '#2563eb' },
+                        },
+                        {
+                            x: [Math.min(...predicted), Math.max(...predicted)],
+                            y: [0, 0],
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Нульова лінія',
+                            line: { color: '#ef4444', dash: 'dash' },
+                        },
+                    ]}
+                    layout={{
+                        title: 'Графік залишків',
+                        xaxis: { title: 'Прогнозовані значення' },
+                        yaxis: { title: 'Залишки' },
+                        width: '100%',
+                        height: 500,
+                        margin: { t: 40, b: 40 },
+                    }}
+                />
+            </div>
+        );
+    }
 
-  return (
-    <div className="visualization-container">
-      <h2 className="text-xl font-semibold mb-4">Візуалізація</h2>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h3 className="font-medium mb-2">Фактичні vs Прогнозовані значення</h3>
-          <div className="bg-white p-2 border border-gray-200 rounded-md">
-            <canvas ref={actualVsPredictedRef}></canvas>
-          </div>
-        </div>
-
-        <div>
-          <h3 className="font-medium mb-2">Залишки</h3>
-          <div className="bg-white p-2 border border-gray-200 rounded-md">
-            <canvas ref={residualsRef}></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    return null;
 };
 
 export default Visualization;

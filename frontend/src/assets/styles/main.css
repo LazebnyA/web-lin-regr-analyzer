@@ -1,0 +1,157 @@
+/* Import Tailwind CSS */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/*------------------------------------
+  Base Styles
+------------------------------------*/
+body {
+  @apply font-inter text-base leading-relaxed text-gray-800;
+  background-color: #f9fafb; /* Light background for readability */
+}
+
+/*------------------------------------
+  Utility Classes
+------------------------------------*/
+.page-title {
+  @apply text-3xl font-extrabold mb-8 text-center text-gray-900;
+}
+
+.section-title {
+  @apply text-2xl font-semibold mb-6 text-gray-800;
+}
+
+/*------------------------------------
+  Form Elements
+------------------------------------*/
+input[type="file"] {
+  @apply cursor-pointer;
+}
+
+/* Enhanced focus states for form controls */
+select:focus,
+input:focus,
+button:focus {
+  @apply outline-none ring-2 ring-blue-500 ring-offset-2;
+  transition: ring 0.3s ease;
+}
+
+/*------------------------------------
+  Buttons
+------------------------------------*/
+.btn {
+  @apply px-6 py-2 rounded-md transition-colors duration-300 ease-in-out focus:outline-none;
+}
+
+.btn-primary {
+  @apply bg-blue-600 text-white hover:bg-blue-700;
+}
+
+.btn-success {
+  @apply bg-green-600 text-white hover:bg-green-700;
+}
+
+.btn:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+/*------------------------------------
+  Tables
+------------------------------------*/
+table {
+  @apply w-full border-collapse;
+}
+
+th,
+td {
+  @apply py-3 px-4 border-b border-gray-200;
+}
+
+th {
+  @apply text-left font-medium bg-gray-50;
+}
+
+tbody tr:hover {
+  @apply bg-gray-100;
+}
+
+/*------------------------------------
+  Cards
+------------------------------------*/
+.card {
+  @apply bg-white shadow-lg rounded-lg p-6;
+}
+
+/*------------------------------------
+  Chart Containers
+------------------------------------*/
+.chart-container {
+  @apply bg-white p-4 border border-gray-200 rounded-lg h-72;
+}
+
+/*------------------------------------
+  Animations
+------------------------------------*/
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/*------------------------------------
+  Custom Scrollbar
+------------------------------------*/
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/*------------------------------------
+  Responsive Adjustments
+------------------------------------*/
+@media (max-width: 768px) {
+  .card {
+    @apply p-4;
+  }
+  .btn {
+    @apply px-4 py-2;
+  }
+}
+
+/*------------------------------------
+  Language-Specific Adjustments
+------------------------------------*/
+html[lang="uk"] body {
+  @apply font-sans;
+  font-family: 'Inter', 'Roboto', 'Arial', sans-serif;
+}
+
+/*------------------------------------
+  Print Styles
+------------------------------------*/
+@media print {
+  .no-print {
+    @apply hidden;
+  }
+  body {
+    @apply text-sm;
+    font-size: 12pt;
+  }
+  .page-break {
+    page-break-before: always;
+  }
+}

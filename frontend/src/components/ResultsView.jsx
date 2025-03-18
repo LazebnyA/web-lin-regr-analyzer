@@ -2,6 +2,133 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { analyzeData, generateReport } from '../services/api';
 import Visualization from './Visualization';
+import styled from 'styled-components';
+import { BlockMath } from 'react-katex';
+import 'katex/dist/katex.min.css';
+
+const Container = styled.div`
+  background: #ffffff;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 1024px;
+  margin: 40px auto;
+`;
+
+const Title = styled.h1`
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 24px;
+`;
+
+const Subtitle = styled.h2`
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+`;
+
+const Text = styled.p`
+  margin-bottom: 16px;
+  color: #718096;
+`;
+
+const Form = styled.form`
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+`;
+
+const Label = styled.label`
+  display: block;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: #374151;
+`;
+
+const Select = styled.select`
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+`;
+
+const CheckboxContainer = styled.div`
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 8px;
+  max-height: 160px;
+  overflow-y: auto;
+`;
+
+const CheckboxItem = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+`;
+
+const CheckboxLabel = styled.label`
+  margin-left: 8px;
+`;
+
+const ErrorText = styled.div`
+  color: #e53e3e;
+  text-align: center;
+`;
+
+const Button = styled.button`
+  padding: 12px 24px;
+  background: ${(props) => (props.disabled ? '#93c5fd' : '#2563eb')};
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: ${(props) => (props.disabled ? 'not-allowed' : 'pointer')};
+  transition: background 0.3s ease;
+  &:hover {
+    background: ${(props) => (props.disabled ? '#93c5fd' : '#1d4ed8')};
+  }
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #2563eb;
+  }
+`;
+
+const ButtonWrapper = styled.div`
+  display: flex;
+  justify-content: center;
+`;
+
+const MetricsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+`;
+
+const Card = styled.div`
+  background: #f9fafb;
+  padding: 16px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+`;
+
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+`;
+
+const Th = styled.th`
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f3f4f6;
+`;
+
+const Td = styled.td`
+  padding: 8px;
+  border-bottom: 1px solid #e5e7eb;
+`;
 
 const ResultsView = ({ sessionData, analysisResults, setAnalysisResults }) => {
   const [loading, setLoading] = useState(false);
@@ -20,27 +147,22 @@ const ResultsView = ({ sessionData, analysisResults, setAnalysisResults }) => {
 
   const handleAnalysis = async (e) => {
     e.preventDefault();
-
     if (!selectedDependent) {
       setError('Please select a dependent variable');
       return;
     }
-
     if (selectedIndependent.length === 0) {
       setError('Please select at least one independent variable');
       return;
     }
-
     setLoading(true);
     setError('');
-
     try {
       const analysisData = {
         session_id: sessionData.session_id,
         dependent_variable: selectedDependent,
-        independent_variables: selectedIndependent
+        independent_variables: selectedIndependent,
       };
-
       const results = await analyzeData(analysisData);
       setAnalysisResults(results);
     } catch (err) {
@@ -57,9 +179,8 @@ const ResultsView = ({ sessionData, analysisResults, setAnalysisResults }) => {
         session_id: sessionData.session_id,
         dependent_variable: selectedDependent,
         independent_variables: selectedIndependent,
-        report_format: reportFormat
+        report_format: reportFormat,
       };
-
       await generateReport(reportData);
     } catch (err) {
       setError(err.message || 'Error generating report');
@@ -69,204 +190,220 @@ const ResultsView = ({ sessionData, analysisResults, setAnalysisResults }) => {
   };
 
   const handleCheckboxChange = (column) => {
-    setSelectedIndependent(prev => {
-      if (prev.includes(column)) {
-        return prev.filter(item => item !== column);
-      } else {
-        return [...prev, column];
-      }
-    });
+    setSelectedIndependent((prev) =>
+        prev.includes(column)
+            ? prev.filter((item) => item !== column)
+            : [...prev, column]
+    );
   };
 
-  if (!sessionData) {
-    return null;
-  }
+  if (!sessionData) return null;
 
   return (
-    <div className="bg-white shadow-md rounded p-6 max-w-6xl mx-auto mt-10">
-      <h1 className="text-2xl font-bold mb-6 text-center">Аналіз даних</h1>
-
-      {!analysisResults ? (
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">Вибір змінних</h2>
-          <p className="mb-4 text-gray-600">
-            Вибрано файл з {sessionData.rows} рядками та {sessionData.columns.length} стовпцями.
-            Виберіть залежну змінну та одну або кілька незалежних змінних для аналізу.
-          </p>
-
-          <form onSubmit={handleAnalysis} className="space-y-6">
+      <Container>
+        <Title>Аналіз даних</Title>
+        {!analysisResults ? (
             <div>
-              <label className="block font-medium text-gray-700 mb-2">
-                Залежна змінна (Y):
-              </label>
-              <select
-                value={selectedDependent}
-                onChange={(e) => setSelectedDependent(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md"
-              >
-                <option value="">Виберіть залежну змінну</option>
-                {sessionData.columns.map((column) => (
-                  <option key={column} value={column}>
-                    {column}
-                  </option>
-                ))}
-              </select>
+              <Subtitle>Вибір змінних</Subtitle>
+              <Text>
+                Вибрано файл з {sessionData.rows} рядками та {sessionData.columns.length} стовпцями.
+                Виберіть залежну змінну та одну або кілька незалежних змінних для аналізу.
+              </Text>
+              <Form onSubmit={handleAnalysis}>
+                <div>
+                  <Label>Залежна змінна (Y):</Label>
+                  <Select
+                      value={selectedDependent}
+                      onChange={(e) => setSelectedDependent(e.target.value)}
+                  >
+                    <option value="">Виберіть залежну змінну</option>
+                    {sessionData.columns.map((column) => (
+                        <option key={column} value={column}>
+                          {column}
+                        </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <Label>Незалежні змінні (X):</Label>
+                  <CheckboxContainer>
+                    {sessionData.columns
+                        .filter((column) => column !== selectedDependent)
+                        .map((column) => (
+                            <CheckboxItem key={column}>
+                              <input
+                                  type="checkbox"
+                                  id={`checkbox-${column}`}
+                                  checked={selectedIndependent.includes(column)}
+                                  onChange={() => handleCheckboxChange(column)}
+                              />
+                              <CheckboxLabel htmlFor={`checkbox-${column}`}>
+                                {column}
+                              </CheckboxLabel>
+                            </CheckboxItem>
+                        ))}
+                  </CheckboxContainer>
+                </div>
+                {error && <ErrorText>{error}</ErrorText>}
+                <ButtonWrapper>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? 'Аналіз...' : 'Аналізувати дані'}
+                  </Button>
+                </ButtonWrapper>
+              </Form>
             </div>
-
+        ) : (
             <div>
-              <label className="block font-medium text-gray-700 mb-2">
-                Незалежні змінні (X):
-              </label>
-              <div className="border border-gray-300 rounded-md p-2 max-h-40 overflow-y-auto">
-                {sessionData.columns
-                  .filter(column => column !== selectedDependent)
-                  .map((column) => (
-                    <div key={column} className="flex items-center mb-1">
-                      <input
-                        type="checkbox"
-                        id={`checkbox-${column}`}
-                        checked={selectedIndependent.includes(column)}
-                        onChange={() => handleCheckboxChange(column)}
-                        className="mr-2"
-                      />
-                      <label htmlFor={`checkbox-${column}`}>{column}</label>
+              <Subtitle>Результати аналізу</Subtitle>
+              <MetricsGrid>
+                {/* Основні метрики */}
+                <Card>
+                  <h3 style={{ marginBottom: '8px', fontWeight: '500' }}>Основні метрики</h3>
+                  <div style={{ fontSize: '0.875rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '8px' }}>
+                      <div style={{ fontWeight: '600' }}>R²:</div>
+                      <div>{(analysisResults.r_squared * 100).toFixed(2)}%</div>
+                      <div style={{ fontWeight: '600' }}>MSE:</div>
+                      <div>{analysisResults.mse.toFixed(4)}</div>
                     </div>
-                  ))}
-              </div>
-            </div>
+                  </div>
+                </Card>
 
-            {error && (
-              <div className="text-red-500 text-center">
-                {error}
-              </div>
-            )}
-
-            <div className="flex justify-center">
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300"
-              >
-                {loading ? 'Аналіз...' : 'Аналізувати дані'}
-              </button>
-            </div>
-          </form>
-        </div>
-      ) : (
-        <div className="results-container">
-          <h2 className="text-xl font-semibold mb-4">Результати аналізу</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="bg-gray-50 p-4 rounded-md">
-              <h3 className="font-medium mb-2">Основні метрики</h3>
-              <div className="text-sm">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="font-semibold">R²:</div>
-                  <div>{(analysisResults.r_squared * 100).toFixed(2)}%</div>
-
-                  <div className="font-semibold">MSE:</div>
-                  <div>{analysisResults.mse.toFixed(4)}</div>
+                {/* Рівняння регресії */}
+                <Card>
+                  <h3 style={{ marginBottom: '8px', fontWeight: '500' }}>Рівняння регресії</h3>
+                  <div style={{ fontSize: '0.875rem', wordBreak: 'break-word' }}>
+                    <BlockMath>
+                      {`${selectedDependent} = ${analysisResults.intercept.toFixed(4)} ${Object.entries(analysisResults.coefficients)
+                          .map(([variable, coefficient]) => `${coefficient >= 0 ? '+' : ''} ${coefficient.toFixed(4)} \\cdot ${variable}`)
+                          .join(' ')}`}
+                    </BlockMath>
+                  </div>
+                </Card>
+              </MetricsGrid>
+              <div style={{ marginBottom: '32px' }}>
+                <h3 style={{ fontWeight: '500', marginBottom: '8px' }}>
+                  Коефіцієнти регресії
+                </h3>
+                <div style={{ overflowX: 'auto' }}>
+                  <Table>
+                    <thead>
+                    <tr>
+                      <Th>Змінна</Th>
+                      <Th>Коефіцієнт</Th>
+                      <Th>P-value</Th>
+                      <Th>Значущість</Th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                      <Td>Перетин</Td>
+                      <Td>{analysisResults.intercept.toFixed(4)}</Td>
+                      <Td>-</Td>
+                      <Td>-</Td>
+                    </tr>
+                    {Object.entries(analysisResults.coefficients).map(
+                        ([variable, coefficient]) => (
+                            <tr key={variable}>
+                              <Td>{variable}</Td>
+                              <Td>{coefficient.toFixed(4)}</Td>
+                              <Td>
+                                {analysisResults.p_values[variable].toFixed(4)}
+                              </Td>
+                              <Td>
+                                {analysisResults.p_values[variable] < 0.05 ? (
+                                    <span style={{ color: '#10b981' }}>Значущий</span>
+                                ) : (
+                                    <span style={{ color: '#ef4444' }}>Незначущий</span>
+                                )}
+                              </Td>
+                            </tr>
+                        )
+                    )}
+                    </tbody>
+                  </Table>
                 </div>
               </div>
-            </div>
 
-            <div className="bg-gray-50 p-4 rounded-md">
-              <h3 className="font-medium mb-2">Рівняння регресії</h3>
-              <div className="text-sm">
-                <p className="break-words">
-                  {selectedDependent} = {analysisResults.intercept.toFixed(4)}
-                  {Object.entries(analysisResults.coefficients).map(([variable, coefficient]) => (
-                    <span key={variable}>
-                      {' '}
-                      {coefficient >= 0 ? '+' : ''}
-                      {coefficient.toFixed(4)} × {variable}
-                    </span>
-                  ))}
-                </p>
-              </div>
-            </div>
-          </div>
+              {/* Графіки */}
+              <div style={{ marginBottom: '32px' }}>
+                <h3 style={{ fontWeight: '500', marginBottom: '16px' }}>Графіки</h3>
+                {/* Графік функції (якщо кількість незалежних змінних ≤ 3) */}
+                {selectedIndependent.length <= 2 && (
+                    <div style={{ marginBottom: '32px' }}>
+                      <h4 style={{ fontWeight: '500', marginBottom: '8px' }}>Графік функції</h4>
+                      <Visualization
+                          type="function"
+                          analysisResults={analysisResults}
+                          dependentVariable={selectedDependent}
+                          independentVariables={selectedIndependent}
+                      />
+                    </div>
+                )}
 
-          <div className="mb-8">
-            <h3 className="font-medium mb-2">Коефіцієнти регресії</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white border border-gray-200">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="py-1 px-3 text-left border-b border-gray-200">Змінна</th>
-                    <th className="py-1 px-3 text-left border-b border-gray-200">Коефіцієнт</th>
-                    <th className="py-1 px-3 text-left border-b border-gray-200">P-value</th>
-                    <th className="py-1 px-3 text-left border-b border-gray-200">Значущість</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="py-1 px-3 border-b border-gray-200">Перетин</td>
-                    <td className="py-1 px-3 border-b border-gray-200">{analysisResults.intercept.toFixed(4)}</td>
-                    <td className="py-1 px-3 border-b border-gray-200">-</td>
-                    <td className="py-1 px-3 border-b border-gray-200">-</td>
-                  </tr>
-                  {Object.entries(analysisResults.coefficients).map(([variable, coefficient]) => (
-                    <tr key={variable}>
-                      <td className="py-1 px-3 border-b border-gray-200">{variable}</td>
-                      <td className="py-1 px-3 border-b border-gray-200">{coefficient.toFixed(4)}</td>
-                      <td className="py-1 px-3 border-b border-gray-200">
-                        {analysisResults.p_values[variable].toFixed(4)}
-                      </td>
-                      <td className="py-1 px-3 border-b border-gray-200">
-                        {analysisResults.p_values[variable] < 0.05 ? (
-                          <span className="text-green-500">Значущий</span>
-                        ) : (
-                          <span className="text-red-500">Незначущий</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                {/* Фактичні vs Прогнозовані значення */}
+                <div style={{ marginBottom: '32px' }}>
+                  <h4 style={{ fontWeight: '500', marginBottom: '8px' }}>Фактичні vs Прогнозовані значення</h4>
+                  <Visualization
+                      type="actual_vs_predicted"
+                      analysisResults={analysisResults}
+                  />
+                </div>
 
-          <Visualization analysisResults={analysisResults} />
-
-          <div className="mt-8 border-t pt-6">
-            <h3 className="text-lg font-medium mb-4">Згенерувати звіт</h3>
-            <div className="flex items-center">
-              <div className="mr-4">
-                <label className="block font-medium text-gray-700 mb-2">
-                  Формат звіту:
-                </label>
-                <select
-                  value={reportFormat}
-                  onChange={(e) => setReportFormat(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                >
-                  <option value="pdf">PDF</option>
-                  <option value="xlsx">Excel (.xlsx)</option>
-                </select>
+                {/* Графік залишків */}
+                {analysisResults.residuals && (
+                    <div style={{ marginBottom: '32px' }}>
+                      <h4 style={{ fontWeight: '500', marginBottom: '8px' }}>Залишки</h4>
+                      <Visualization
+                          type="residuals"
+                          analysisResults={analysisResults}
+                      />
+                    </div>
+                )}
               </div>
 
-              <button
-                onClick={handleReportGeneration}
-                disabled={reportGenerating}
-                className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-green-300 mt-6"
+              <div
+                  style={{
+                    marginTop: '32px',
+                    borderTop: '1px solid #e5e7eb',
+                    paddingTop: '24px',
+                  }}
               >
-                {reportGenerating ? 'Генерація...' : 'Згенерувати звіт'}
-              </button>
+                <Subtitle>Згенерувати звіт</Subtitle>
+                <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px',
+                      flexWrap: 'wrap',
+                    }}
+                >
+                  <div style={{ flex: '1', minWidth: '200px' }}>
+                    <Label>Формат звіту:</Label>
+                    <Select
+                        value={reportFormat}
+                        onChange={(e) => setReportFormat(e.target.value)}
+                    >
+                      <option value="pdf">PDF</option>
+                      <option value="xlsx">Excel (.xlsx)</option>
+                    </Select>
+                  </div>
+                  <Button onClick={handleReportGeneration} disabled={reportGenerating}>
+                    {reportGenerating ? 'Генерація...' : 'Згенерувати звіт'}
+                  </Button>
+                </div>
+              </div>
+              <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'center' }}>
+                <Button
+                    onClick={() => setAnalysisResults(null)}
+                    style={{ background: '#6b7280' }}
+                >
+                  Назад до вибору змінних
+                </Button>
+              </div>
             </div>
-          </div>
-
-          <div className="mt-8 flex justify-center">
-            <button
-              onClick={() => setAnalysisResults(null)}
-              className="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
-            >
-              Назад до вибору змінних
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </Container>
   );
 };
 

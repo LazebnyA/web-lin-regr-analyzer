@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import DataInput from './components/DataInput';
 import ResultsView from './components/ResultsView';
-import './assets/styles/main.css';
 
 function App() {
   const [sessionData, setSessionData] = useState(null);

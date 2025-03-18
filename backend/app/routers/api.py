@@ -2,10 +2,10 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 import pandas as pd
 import os
-from backend.app.schemas.models import RegressionInput, RegressionResult
-from backend.app.services.data_processor import DataProcessor
-from backend.app.models.regression import LinearRegression
-from backend.app.services.report import ReportGenerator
+from app.schemas.models import RegressionInput, RegressionResult
+from app.services.data_processor import DataProcessor
+from app.models.regression import LinearRegression
+from app.services.report import ReportGenerator
 import time
 import io
 
@@ -33,6 +33,11 @@ async def upload_csv_file(file: UploadFile = File(...)):
 
         # Create a unique ID for this session
         session_id = f"session_{int(time.time())}"
+
+        upload_dir = r'\tmp'
+
+        if not os.path.exists(upload_dir):
+            os.makedirs(upload_dir)
 
         # Save the dataframe to a temp file
         temp_file = f"/tmp/{session_id}.pkl"
