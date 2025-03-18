@@ -1,0 +1,55 @@
+# --- Python / FastAPI ---
+
+# Ігнорування зкомпільованих файлів байт-коду Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Віртуальні середовища Python
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Файли збірки та дистрибуції
+*.egg-info/
+dist/
+build/
+
+# Логи та бази даних
+*.log
+*.sqlite3
+
+# Файли, специфічні для FastAPI
+instance/
+.webassets-cache
+
+# Файли налаштувань IDE
+.vscode/
+.idea/
+
+# --- React.js / Node ---
+
+# Директорія з встановленими пакетами
+node_modules/
+
+# Логи npm/yarn
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Локальні файли оточення
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Папка збірки React додатку (якщо використовується)
+build/
+
+# --- Системні файли ---
+.DS_Store
+Thumbs.db

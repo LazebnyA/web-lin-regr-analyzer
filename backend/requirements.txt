@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pandas
+numpy
+scikit-learn
+statsmodels
+matplotlib
+seaborn
+fpdf
+python-multipart
+xlsxwriter
+openpyxl
