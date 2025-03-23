@@ -58,9 +58,12 @@ class LinearRegression:
         for column in X.columns:
             pred_vs_actual[column] = X[column]
 
-        # Correlation matrix including dependent variable
+        # All data including dependent variable
         all_data = pd.concat([X, y], axis=1)
-        correlation_matrix = all_data.corr()
+
+        # Calculate both Pearson and Spearman correlation matrices
+        pearson_correlation = all_data.corr(method='pearson')
+        spearman_correlation = all_data.corr(method='spearman')
 
         # Extract coefficients with indices as variable names
         coefficients = self.model.params[1:].to_dict()  # Skip constant/intercept
@@ -72,16 +75,39 @@ class LinearRegression:
         # Extract R-squared
         r_squared = self.model.rsquared
 
+        # Extract confidence intervals for all parameters (including intercept)
+        conf_intervals = self.model.conf_int(alpha=0.05)  # 95% confidence intervals
+
+        # Convert confidence intervals to a more usable format
+        conf_intervals_dict = {}
+        for idx, param_name in enumerate(self.model.params.index):
+            if idx == 0:  # This is the intercept
+                continue
+            conf_intervals_dict[param_name] = {
+                'lower': conf_intervals.iloc[idx, 0],
+                'upper': conf_intervals.iloc[idx, 1]
+            }
+
+        # Get intercept confidence interval separately
+        intercept_conf_interval = {
+            'lower': conf_intervals.iloc[0, 0],
+            'upper': conf_intervals.iloc[0, 1]
+        }
+
         return {
             "coefficients": coefficients,
             "intercept": intercept,
             "r_squared": r_squared,
             "mse": mse,
             "p_values": p_values,
+            "confidence_intervals": conf_intervals_dict,  # New field
+            "intercept_confidence_interval": intercept_conf_interval,  # New field
             "predicted_vs_actual": pred_vs_actual,
             "residuals": pred_vs_actual[['residual']],
-            "correlation_matrix": correlation_matrix,
-            "model_summary": self.model.summary()
+            "correlation_matrix": pearson_correlation,
+            "spearman_correlation": spearman_correlation,
+            "model_summary": self.model.summary(),
+            "independent_var_count": len(X.columns)
         }
 
     def predict(self, X_new: pd.DataFrame) -> np.ndarray:

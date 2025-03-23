@@ -129,7 +129,7 @@ async def generate_report(background_tasks: BackgroundTasks, regression_input: R
         )
 
         # Background task to clean up the file after some time
-        background_tasks.add_task(lambda: os.remove(report_file) if os.path.exists(report_file) else None, 300)
+        background_tasks.add_task(lambda x: os.remove(report_file) if os.path.exists(report_file) else None, 300)
 
         return FileResponse(
             path=report_file,

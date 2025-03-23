@@ -1,17 +1,34 @@
+import subprocess
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 import os
 import tempfile
-from fpdf import FPDF
 import datetime
+import matplotlib as mpl
+import matplotlib.font_manager as fm
+import shutil
+
+# Налаштування шрифтів для matplotlib, які підтримують кирилицю
+# Спроба знайти шрифт, що підтримує кирилицю
+cyrillic_fonts = [f.name for f in fm.fontManager.ttflist if
+                  'DejaVu' in f.name or 'Liberation' in f.name or 'Ubuntu' in f.name or 'Arial' in f.name]
+if cyrillic_fonts:
+    mpl.rcParams['font.family'] = cyrillic_fonts[0]
+else:
+    mpl.rcParams['font.family'] = 'DejaVu Sans'
+
+# Налаштування для підтримки UTF-8 в matplotlib
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
 
 
 class ReportGenerator:
     """
-    Generate reports with regression analysis results
+    Генерація звітів з результатами регресійного аналізу використовуючи LaTeX
     """
 
     def generate_report(
@@ -19,135 +36,467 @@ class ReportGenerator:
             results: Dict[str, Any],
             format_type: str,
             dependent_variable: str,
-            independent_variables: List[str]
+            independent_variables: List[str],
+            output_path: str = None
     ) -> str:
         """
-        Generate a report in the specified format
+        Згенерувати звіт у вказаному форматі
 
-        Parameters:
+        Параметри:
         -----------
         results : Dict[str, Any]
-            Regression analysis results
+            Результати регресійного аналізу
         format_type : str
-            Report format (pdf or xlsx)
+            Формат звіту (pdf, tex або xlsx)
         dependent_variable : str
-            Name of the dependent variable
+            Назва залежної змінної
         independent_variables : List[str]
-            Names of the independent variables
+            Назви незалежних змінних
+        output_path : str, optional
+            Шлях для збереження файлу. Якщо не вказано, буде створено шлях за замовчуванням.
 
-        Returns:
+        Повертає:
         --------
         str
-            Path to the generated report file
+            Шлях до згенерованого файлу звіту
         """
-        if format_type.lower() == "pdf":
-            return self._generate_pdf_report(results, dependent_variable, independent_variables)
+        if format_type.lower() == "tex":
+            return self._generate_latex_file(results, dependent_variable, independent_variables, output_path)
+        elif format_type.lower() == "pdf":
+            return self._generate_pdf_file(results, dependent_variable, independent_variables, output_path)
         elif format_type.lower() == "xlsx":
-            return self._generate_excel_report(results, dependent_variable, independent_variables)
+            return self._generate_excel_report(results, dependent_variable, independent_variables, output_path)
         else:
-            raise ValueError(f"Unsupported format: {format_type}")
+            raise ValueError(f"Непідтримуваний формат: {format_type}")
 
-    def _generate_pdf_report(
+    def _generate_pdf_file(
             self,
             results: Dict[str, Any],
             dependent_variable: str,
-            independent_variables: List[str]
+            independent_variables: List[str],
+            output_path: str = None
     ) -> str:
         """
-        Generate a PDF report
+        Згенерувати PDF файл із результатами регресійного аналізу
+
+        Повертає:
+        --------
+        str
+            Шлях до згенерованого PDF файлу
         """
-        # Create visualization images
-        img_paths = self._create_visualization_images(results, dependent_variable, independent_variables)
+        # Визначення імені файлу та директорій
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        temp_dir = os.path.join(os.getcwd(), f"temp_latex_{timestamp}")
+        os.makedirs(temp_dir, exist_ok=True)
 
-        # Create PDF
-        pdf = FPDF()
-        pdf.add_page()
+        # Визначення шляху для збереження PDF файлу
+        if output_path is None:
+            output_dir = os.getcwd()
+            output_filename = f"regression_report_{timestamp}.pdf"
+            output_path = os.path.join(output_dir, output_filename)
+        else:
+            output_dir = os.path.dirname(output_path)
+            output_filename = os.path.basename(output_path)
 
-        # Title
-        pdf.set_font("Arial", "B", 16)
-        pdf.cell(0, 10, "Multifactor Linear Regression Report", ln=True, align="C")
-        pdf.ln(5)
+        # Перевірка розширення файлу
+        if not output_path.lower().endswith('.pdf'):
+            output_path = f"{output_path}.pdf"
 
-        # Date
-        pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 10, f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
-        pdf.ln(5)
+        # Створення імені для проміжного файлу LaTeX
+        tex_filename = os.path.splitext(output_filename)[0] + ".tex"
+        tex_path = os.path.join(temp_dir, tex_filename)
 
-        # Model summary
-        pdf.set_font("Arial", "B", 14)
-        pdf.cell(0, 10, "Model Summary", ln=True)
-        pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 10, f"Dependent Variable: {dependent_variable}", ln=True)
-        pdf.cell(0, 10, f"Independent Variables: {', '.join(independent_variables)}", ln=True)
-        pdf.cell(0, 10, f"R-squared: {results['r_squared']:.4f}", ln=True)
-        pdf.cell(0, 10, f"Mean Squared Error: {results['mse']:.4f}", ln=True)
-        pdf.ln(5)
+        try:
+            # Створення зображень для графіків
+            img_paths = self._create_visualization_images(results, dependent_variable, independent_variables, temp_dir)
 
-        # Coefficients
-        pdf.set_font("Arial", "B", 14)
-        pdf.cell(0, 10, "Regression Coefficients", ln=True)
-        pdf.set_font("Arial", "", 12)
-        pdf.cell(40, 10, "Variable", border=1)
-        pdf.cell(40, 10, "Coefficient", border=1)
-        pdf.cell(40, 10, "P-value", border=1)
-        pdf.cell(40, 10, "Significant", border=1)
-        pdf.ln()
+            # Створення LaTeX документу з оновленими пакетами
+            latex_content = self._create_latex_content_updated(results, dependent_variable, independent_variables,
+                                                               img_paths)
 
-        # Intercept
-        pdf.cell(40, 10, "Intercept", border=1)
-        pdf.cell(40, 10, f"{results['intercept']:.4f}", border=1)
-        pdf.cell(40, 10, "N/A", border=1)
-        pdf.cell(40, 10, "N/A", border=1)
-        pdf.ln()
+            # Збереження LaTeX вмісту в файл
+            with open(tex_path, "w", encoding="utf-8") as f:
+                f.write(latex_content)
 
-        # Other coefficients
+            # Компіляція LaTeX файлу в PDF
+            current_dir = os.getcwd()
+            os.chdir(temp_dir)  # Змінюємо поточну директорію на тимчасову для коректної компіляції
+
+            # Запуск pdflatex двічі для правильної обробки посилань
+            for _ in range(2):
+                process = subprocess.run(
+                    ["pdflatex", "-interaction=nonstopmode", tex_filename],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    check=False
+                )
+
+                # Перевірка на помилки
+                if process.returncode != 0:
+                    print(f"Помилка при компіляції LaTeX в PDF: {process.stderr}")
+                    # Продовжуємо, незважаючи на помилки, щоб спробувати створити PDF
+
+            os.chdir(current_dir)  # Повертаємось до вихідної директорії
+
+            # Перевірка, чи був створений PDF
+            compiled_pdf_path = os.path.join(temp_dir, os.path.splitext(tex_filename)[0] + ".pdf")
+            if not os.path.exists(compiled_pdf_path):
+                raise RuntimeError(f"PDF файл не було створено при компіляції LaTeX")
+
+            # Копіювання PDF файлу до кінцевого шляху
+            shutil.copy(compiled_pdf_path, output_path)
+
+            return output_path
+
+        except Exception as e:
+            raise RuntimeError(f"Помилка при створенні PDF файлу: {str(e)}")
+
+        # finally:
+            # Видалення створеного тимчасового каталогу після завершення всіх операцій
+            # if os.path.exists(temp_dir):
+            #     shutil.rmtree(temp_dir)
+
+    def _generate_latex_file(
+            self,
+            results: Dict[str, Any],
+            dependent_variable: str,
+            independent_variables: List[str],
+            output_path: str = None
+    ) -> str:
+        """Згенерувати LaTeX файл без компіляції в PDF"""
+        # Створення власного тимчасового каталогу замість використання tempfile
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        temp_dir = os.path.join(os.getcwd(), f"temp_latex_{timestamp}")
+        os.makedirs(temp_dir, exist_ok=True)
+
+        try:
+            # Створення зображень для графіків
+            img_paths = self._create_visualization_images(results, dependent_variable, independent_variables, temp_dir)
+
+            # Створення LaTeX документу з оновленими пакетами
+            latex_content = self._create_latex_content_updated(results, dependent_variable, independent_variables,
+                                                               img_paths)
+
+            # Визначення шляху для збереження LaTeX файлу
+            if output_path is None:
+                output_path = os.path.join(os.getcwd(),
+                                           f"regression_report_{timestamp}.tex")
+
+            # Збереження LaTeX вмісту в файл
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(latex_content)
+
+            # Копіювання зображень в каталог з .tex файлом
+            output_dir = os.path.dirname(output_path)
+            for img_path, _ in img_paths:
+                img_name = os.path.basename(img_path)
+                shutil.copy(img_path, os.path.join(output_dir, img_name))
+
+            return output_path
+
+        finally:
+            # Видалення створеного тимчасового каталогу після завершення всіх операцій
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+
+    import os
+    import pandas as pd
+    from typing import Dict, Any, List
+
+    def _create_latex_content_updated(
+            self,
+            results: Dict[str, Any],
+            dependent_variable: str,
+            independent_variables: List[str],
+            img_paths: List[Tuple[str, str]]
+    ) -> str:
+        """Створити LaTeX вміст для звіту з оновленими пакетами"""
+
+        latex_content = r"""
+    \documentclass{article}
+    \usepackage{amsmath, amssymb}
+    \usepackage[T2A]{fontenc} % Cyrillic font encoding
+    \usepackage[utf8]{inputenc} % UTF-8 input encoding
+    \usepackage{paratype} % PT Serif/Sans fonts with good Cyrillic support
+    \usepackage[ukrainian]{babel} % Ukrainian language support
+    \usepackage[a4paper, margin=2.5cm]{geometry}
+    \usepackage{mathtools}
+    \usepackage{xcolor}
+    \usepackage{graphicx}
+    \usepackage{float}
+    \usepackage{enumitem}
+    \usepackage{tikz}
+    \usetikzlibrary{matrix}
+    \usepackage{amsthm}
+    \usepackage{booktabs}
+    \usepackage{fancyhdr}
+    \usepackage{titlesec}
+    \usepackage{array}
+    \usepackage{longtable}
+    \usepackage{siunitx}
+
+    \titleformat{\section}{\Large\bfseries}{\thesection}{1em}{}
+    \titleformat{\subsection}{\large\bfseries}{\thesubsection}{1em}{}
+
+    \pagestyle{fancy}
+    \fancyhf{}
+    \fancyhead[C]{\textbf{Звіт багатофакторної лінійної регресії}}
+    \fancyfoot[C]{\thepage}
+    \renewcommand{\headrulewidth}{0.4pt}
+
+    \begin{document}
+
+    \begin{center}
+    \Large\textbf{Звіт багатофакторної лінійної регресії}
+    \end{center}
+
+    \vspace{1cm}
+
+    \textbf{Дата:} \today
+
+    \vspace{0.5cm}
+
+    \section{Опис моделі}
+
+    \begin{itemize}
+       \item Залежна змінна: \textbf{""" + dependent_variable + r"""}
+       \item Незалежні змінні: \textbf{""" + ", ".join(independent_variables) + r"""}
+       \item Коефіцієнт детермінації $R^2$: \textbf{""" + f"{results['r_squared']:.4f}" + r"""}
+       \item Середньоквадратична похибка: \textbf{""" + f"{results['mse']:.4f}" + r"""}
+    \end{itemize}
+
+    \vspace{0.5cm}
+
+    \section{Коефіцієнти регресії}
+
+   \renewcommand{\arraystretch}{1.5} % Increase row height by 50%
+    \begin{center}
+    \begin{tabular}{lccc}
+    \toprule
+    \textbf{Змінна} & \textbf{Коефіцієнт} & \textbf{P-значення} & \textbf{Значущість (p < 0.05)} \\
+     & \textbf{[95\% довірчий інтервал]} & & \\
+    \midrule
+    Вільний член & """ + f"{results['intercept']:.4f}" + r""" & Н/Д & Н/Д \\
+     & """ + f"[{results['intercept_confidence_interval']['lower']:.4f}, {results['intercept_confidence_interval']['upper']:.4f}]" + r""" & & \\
+    """
+        # Додавання коефіцієнтів регресії
         for var, coef in results["coefficients"].items():
             p_value = results["p_values"].get(var, 0)
-            is_significant = "Yes" if p_value < 0.05 else "No"
-            pdf.cell(40, 10, str(var), border=1)
-            pdf.cell(40, 10, f"{coef:.4f}", border=1)
-            pdf.cell(40, 10, f"{p_value:.4f}", border=1)
-            pdf.cell(40, 10, is_significant, border=1)
-            pdf.ln()
+            p_value_str = f"{p_value:.4e}" if p_value < 0.0001 else f"{p_value:.4f}"
+            is_significant = "Так" if p_value < 0.05 else "Ні"
+            conf_int = results["confidence_intervals"].get(var, {"lower": 0, "upper": 0})
+            conf_int_str = f"[{conf_int['lower']:.4f}, {conf_int['upper']:.4f}]"
+            latex_content += f"{var} & {coef:.4f} & {p_value_str} & {is_significant} \\\\\n"
+            latex_content += f" & {conf_int_str} & & \\\\\n"
+        latex_content += r"""
+    \bottomrule
+    \end{tabular}
+    \end{center}
 
-        pdf.ln(10)
-
-        # Add visualizations
+    \vspace{1cm}
+    """
+        # Додавання зображень
         for img_path, title in img_paths:
-            pdf.add_page()
-            pdf.set_font("Arial", "B", 14)
-            pdf.cell(0, 10, title, ln=True)
-            pdf.image(img_path, x=10, y=30, w=190)
+            img_filename = os.path.basename(img_path)
+            latex_content += r"""
+    \begin{figure}[H]
+       \centering
+       \includegraphics[width=0.8\textwidth]{""" + img_filename + r"""}
+       \caption{""" + title + r"""}
+       \label{fig:""" + title.lower().replace(" ", "_") + r"""}
+    \end{figure}
 
-        # Save PDF to temp file
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
-        pdf.output(temp_file)
+    \vspace{0.5cm}
+    """
+        # Кореляційна матриця
+        latex_content += r"""
 
-        # Clean up image files
-        for img_path, _ in img_paths:
-            if os.path.exists(img_path):
-                os.remove(img_path)
+    \section{Інтерпретація результатів}
 
-        return temp_file
+    Дана модель багатофакторної лінійної регресії показує залежність змінної \textbf{""" + dependent_variable + r"""} від змінних """ + ", ".join(
+            [f"\\textbf{{{var}}}" for var in independent_variables]) + r""".
+
+    Коефіцієнт детермінації $R^2$ дорівнює """ + f"{results['r_squared']:.4f}" + rf""", що означає, що {results['r_squared'] * 100:.1f}\% варіації залежної змінної пояснюється включеними у модель незалежними змінними.
+
+    Середньоквадратична похибка (MSE) становить """ + f"{results['mse']:.4f}" + r""", що є мірою середнього квадратичного відхилення спостережуваних значень від передбачених.
+
+    \vspace{0.5cm}
+
+    \section{Висновки}
+
+    Результати аналізу показують, що модель має """ + (
+                             "достатню" if results['r_squared'] > 0.7 else "помірну" if results[
+                                                                                            'r_squared'] > 0.5 else "низьку"
+                         ) + r""" пояснювальну здатність.
+    """
+        significant_coefs = []
+        for var, coef in results["coefficients"].items():
+            p_value = results["p_values"].get(var, 0)
+            if p_value < 0.05:
+                significant_coefs.append((var, coef))
+        if significant_coefs:
+            sorted_significant_coefs = sorted(significant_coefs, key=lambda x: abs(x[1]), reverse=True)
+            latex_content += r"""
+    Найбільший вплив на залежну змінну мають фактори:
+    \begin{itemize}
+    """
+            for var, coef in sorted_significant_coefs[:3]:
+                sign = "збільшує" if coef > 0 else "зменшує"
+                latex_content += f"    \\item \\textbf{{{var}}}: {sign} значення залежної змінної на {abs(coef):.4f} одиниць при зміні на одну одиницю\n"
+            latex_content += r"""\end{itemize}
+    """
+        else:
+            latex_content += r"""
+    Аналіз не виявив статистично значущих факторів (p < 0.05), що впливають на залежну змінну.
+    """
+        latex_content += r"""
+    \end{document}
+    """
+        return latex_content
+
+    def _create_visualization_images(
+            self,
+            results: Dict[str, Any],
+            dependent_variable: str,
+            independent_variables: List[str],
+            output_dir: str
+    ) -> List[tuple]:
+        """
+        Створити зображення візуалізацій для звіту
+
+        Повертає:
+        --------
+        List[tuple]
+            Список кортежів (шлях_до_зображення, заголовок)
+        """
+        image_paths = []
+
+        # Налаштування шрифту для підтримки кирилиці в matplotlib
+        plt.rcParams['font.family'] = 'DejaVu Sans'
+        plt.rcParams['pdf.fonttype'] = 42
+        plt.rcParams['ps.fonttype'] = 42
+
+        # Фактичні проти передбачених
+        plt.figure(figsize=(10, 6))
+        pred_actual = pd.DataFrame(results["predicted_vs_actual"])
+        plt.scatter(pred_actual["actual"], pred_actual["predicted"], alpha=0.7)
+        min_val = min(pred_actual["actual"].min(), pred_actual["predicted"].min())
+        max_val = max(pred_actual["actual"].max(), pred_actual["predicted"].max())
+        plt.plot([min_val, max_val], [min_val, max_val], 'k--', lw=2)
+        plt.xlabel("Фактичні значення")
+        plt.ylabel("Передбачені значення")
+        plt.title(f"Фактичні проти передбачених значень для {dependent_variable}")
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+
+        # Збереження зображення
+        img_path = os.path.join(output_dir, "actual_vs_predicted.png")
+        plt.savefig(img_path, dpi=300, bbox_inches="tight")
+        plt.close()
+        image_paths.append((img_path, "Фактичні проти передбачених значень"))
+
+        # Графік залишків
+        plt.figure(figsize=(10, 6))
+        residuals = pd.DataFrame(results["residuals"])
+        plt.scatter(pred_actual["predicted"], residuals["residual"], alpha=0.7)
+        plt.axhline(y=0, color='r', linestyle='-')
+        plt.xlabel("Передбачені значення")
+        plt.ylabel("Залишки")
+        plt.title("Залишки проти передбачених значень")
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+
+        # Збереження зображення
+        img_path = os.path.join(output_dir, "residuals.png")
+        plt.savefig(img_path, dpi=300, bbox_inches="tight")
+        plt.close()
+        image_paths.append((img_path, "Графік залишків"))
+
+        # Нормальний Q-Q графік залишків
+        plt.figure(figsize=(10, 6))
+        from scipy import stats
+        stats.probplot(residuals["residual"], plot=plt)
+        plt.title("Q-Q графік залишків")
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+
+        # Збереження зображення
+        img_path = os.path.join(output_dir, "qq_plot.png")
+        plt.savefig(img_path, dpi=300, bbox_inches="tight")
+        plt.close()
+        image_paths.append((img_path, "Нормальний Q-Q графік залишків"))
+
+        # Теплова карта кореляцій (коеф. Пірсона)
+        plt.figure(figsize=(10, 8))
+        corr_matrix = pd.DataFrame(results["correlation_matrix"])
+        mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
+        cmap = sns.diverging_palette(230, 20, as_cmap=True)
+        sns.heatmap(corr_matrix, mask=mask, annot=True, cmap=cmap, vmin=-1, vmax=1,
+                    square=True, linewidths=.5, fmt=".2f", center=0)
+        plt.title("Матриця кореляцій (коеф. Пірсона)")
+        plt.tight_layout()
+
+        # Збереження зображення
+        img_path = os.path.join(output_dir, "correlation_heatmap.png")
+        plt.savefig(img_path, dpi=300, bbox_inches="tight")
+        plt.close()
+        image_paths.append((img_path, "Теплова карта кореляцій (коеф. Пірсона)"))
+
+        # Теплова карта кореляцій (коеф. Спірмена)
+        plt.figure(figsize=(10, 8))
+        corr_matrix = pd.DataFrame(results["spearman_correlation"])
+        mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
+        cmap = sns.diverging_palette(230, 20, as_cmap=True)
+        sns.heatmap(corr_matrix, mask=mask, annot=True, cmap=cmap, vmin=-1, vmax=1,
+                    square=True, linewidths=.5, fmt=".2f", center=0)
+        plt.title("Матриця кореляцій (коеф. Спірмена)")
+        plt.tight_layout()
+
+        # Збереження зображення
+        img_path = os.path.join(output_dir, "correlation_heatmap_spearman.png")
+        plt.savefig(img_path, dpi=300, bbox_inches="tight")
+        plt.close()
+        image_paths.append((img_path, "Теплова карта кореляцій (коеф. Спірмена)"))
+
+        # Гістограма залишків
+        plt.figure(figsize=(10, 6))
+        sns.histplot(residuals["residual"], kde=True)
+        plt.xlabel("Залишки")
+        plt.ylabel("Частота")
+        plt.title("Розподіл залишків")
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+
+        # Збереження зображення
+        img_path = os.path.join(output_dir, "residuals_hist.png")
+        plt.savefig(img_path, dpi=300, bbox_inches="tight")
+        plt.close()
+        image_paths.append((img_path, "Гістограма залишків"))
+
+        return image_paths
 
     def _generate_excel_report(
             self,
             results: Dict[str, Any],
             dependent_variable: str,
-            independent_variables: List[str]
+            independent_variables: List[str],
+            output_path: str = None
     ) -> str:
         """
-        Generate an Excel report
+        Згенерувати звіт Excel
         """
-        # Create a temporary Excel file
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx").name
+        # Визначення шляху для збереження Excel файлу
+        if output_path is None:
+            output_path = os.path.join(os.getcwd(),
+                                       f"regression_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
 
-        # Create Excel writer
-        with pd.ExcelWriter(temp_file, engine='xlsxwriter') as writer:
-            # Summary sheet
+        # Створення Excel writer
+        with pd.ExcelWriter(output_path, engine='xlsxwriter') as writer:
+            # Аркуш зведення
             summary_data = {
-                "Metric": ["Dependent Variable", "Independent Variables", "R-squared", "MSE", "Intercept"],
-                "Value": [
+                "Показник": ["Залежна змінна", "Незалежні змінні", "R²", "Середньоквадратична похибка", "Вільний член"],
+                "Значення": [
                     dependent_variable,
                     ", ".join(independent_variables),
                     results["r_squared"],
@@ -156,96 +505,41 @@ class ReportGenerator:
                 ]
             }
             summary_df = pd.DataFrame(summary_data)
-            summary_df.to_excel(writer, sheet_name="Summary", index=False)
+            summary_df.to_excel(writer, sheet_name="Результати", index=False)
 
-            # Coefficients sheet
+            # Аркуш коефіцієнтів
             coef_data = []
             for var, coef in results["coefficients"].items():
                 p_value = results["p_values"].get(var, 0)
-                is_significant = "Yes" if p_value < 0.05 else "No"
+                is_significant = "Так" if p_value < 0.05 else "Ні"
                 coef_data.append({
-                    "Variable": var,
-                    "Coefficient": coef,
-                    "P-value": p_value,
-                    "Significant": is_significant
+                    "Змінна": var,
+                    "Коефіцієнт": coef,
+                    "P-значення": p_value,
+                    "Статистична значущість": is_significant
                 })
             coef_df = pd.DataFrame(coef_data)
-            coef_df.to_excel(writer, sheet_name="Coefficients", index=False)
+            coef_df.to_excel(writer, sheet_name="Коефіцієнти", index=False)
 
-            # Predicted vs Actual sheet
+            # Аркуш передбачених проти фактичних значень
             pred_actual_df = pd.DataFrame(results["predicted_vs_actual"])
-            pred_actual_df.to_excel(writer, sheet_name="Predicted vs Actual", index=False)
+            # Перейменування стовпців на українську мову
+            renamed_pred_actual = pred_actual_df.rename(columns={
+                "actual": "фактичні",
+                "predicted": "передбачені"
+            })
+            renamed_pred_actual.to_excel(writer, sheet_name="Передбачені проти фактичних", index=False)
 
-            # Residuals sheet
+            # Аркуш залишків
             residuals_df = pd.DataFrame(results["residuals"])
-            residuals_df.to_excel(writer, sheet_name="Residuals", index=False)
+            # Перейменування стовпців на українську мову
+            renamed_residuals = residuals_df.rename(columns={
+                "residual": "залишок"
+            })
+            renamed_residuals.to_excel(writer, sheet_name="Залишки", index=False)
 
-            # Correlation Matrix sheet
+            # Аркуш кореляційної матриці
             corr_df = pd.DataFrame(results["correlation_matrix"])
-            corr_df.to_excel(writer, sheet_name="Correlation Matrix")
+            corr_df.to_excel(writer, sheet_name="Матриця кореляцій")
 
-        return temp_file
-
-    def _create_visualization_images(
-            self,
-            results: Dict[str, Any],
-            dependent_variable: str,
-            independent_variables: List[str]
-    ) -> List[tuple]:
-        """
-        Create visualization images for the report
-
-        Returns:
-        --------
-        List[tuple]
-            List of tuples (image_path, title)
-        """
-        image_paths = []
-
-        # Actual vs Predicted
-        plt.figure(figsize=(10, 6))
-        pred_actual = pd.DataFrame(results["predicted_vs_actual"])
-        plt.scatter(pred_actual["actual"], pred_actual["predicted"])
-        plt.plot([pred_actual["actual"].min(), pred_actual["actual"].max()],
-                 [pred_actual["actual"].min(), pred_actual["actual"].max()],
-                 'k--', lw=2)
-        plt.xlabel("Actual Values")
-        plt.ylabel("Predicted Values")
-        plt.title(f"Actual vs Predicted Values for {dependent_variable}")
-        plt.grid(True)
-
-        # Save figure to temp file
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
-        plt.savefig(temp_file, dpi=300, bbox_inches="tight")
-        plt.close()
-        image_paths.append((temp_file, "Actual vs Predicted Values"))
-
-        # Residuals Plot
-        plt.figure(figsize=(10, 6))
-        residuals = pd.DataFrame(results["residuals"])
-        plt.scatter(pred_actual["predicted"], residuals["residual"])
-        plt.axhline(y=0, color='r', linestyle='-')
-        plt.xlabel("Predicted Values")
-        plt.ylabel("Residuals")
-        plt.title("Residuals vs Predicted Values")
-        plt.grid(True)
-
-        # Save figure to temp file
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
-        plt.savefig(temp_file, dpi=300, bbox_inches="tight")
-        plt.close()
-        image_paths.append((temp_file, "Residuals Plot"))
-
-        # Correlation Heatmap
-        plt.figure(figsize=(10, 8))
-        corr_matrix = pd.DataFrame(results["correlation_matrix"])
-        sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", vmin=-1, vmax=1)
-        plt.title("Correlation Matrix")
-
-        # Save figure to temp file
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
-        plt.savefig(temp_file, dpi=300, bbox_inches="tight")
-        plt.close()
-        image_paths.append((temp_file, "Correlation Heatmap"))
-
-        return image_paths
+        return output_path

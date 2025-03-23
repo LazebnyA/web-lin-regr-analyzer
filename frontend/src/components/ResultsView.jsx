@@ -394,7 +394,7 @@ const ResultsView = ({ sessionData, analysisResults, setAnalysisResults }) => {
                 {/* Графік функції (якщо кількість незалежних змінних ≤ 3) */}
                 {selectedIndependent.length <= 2 && (
                     <div style={{ marginBottom: '32px' }}>
-                      <h4 className="graph-title" style={{ fontWeight: '500', marginBottom: '8px' }}>Графік функції</h4>
+                      <h4 className="graph-title" style={{ fontWeight: '500', marginBottom: '8px' }}>Графік функції (x - перша незалежна змінна в таблиці, y - друга)</h4>
                       <Visualization
                           type="function"
                           analysisResults={analysisResults}
